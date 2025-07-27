@@ -1,26 +1,38 @@
-# Use Ubuntu base with Go 1.23
-FROM golang:1.23
+# Use Debian base
+FROM debian:bookworm
 
-# Install system dependencies
+# Install dependencies
 RUN apt-get update && apt-get install -y \
+    curl \
     ffmpeg \
     python3 \
     python3-pip \
-    curl \
+    git \
+    build-essential \
+    ca-certificates \
+    wget \
     && pip3 install yt-dlp \
     && apt-get clean
+
+# Install Go 1.23 manually
+RUN wget https://go.dev/dl/go1.23.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go1.23.linux-amd64.tar.gz && \
+    rm go1.23.linux-amd64.tar.gz
+
+# Set Go environment
+ENV PATH="/usr/local/go/bin:${PATH}"
 
 # Set working directory
 WORKDIR /app
 
-# Copy project files
+# Copy all files
 COPY . .
 
 # Build the Go app
 RUN go build -o main .
 
-# Expose the port your app runs on
+# Expose port
 EXPOSE 8080
 
-# Command to run the binary
+# Start the app
 CMD ["./main"]
