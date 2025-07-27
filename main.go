@@ -10,11 +10,12 @@ import (
 )
 
 type Response struct {
-	Status  bool   `json:"status"`
-	Message string `json:"message,omitempty"`
-	Stream  string `json:"stream,omitempty"`
+	Status  bool         `json:"status"`
+	Message string       `json:"message,omitempty"`
+	Stream  *StreamLinks `json:"stream,omitempty"`
 }
 
+// Handler for /stream?video=...&format=...
 func streamHandler(w http.ResponseWriter, r *http.Request) {
 	video := r.URL.Query().Get("video")
 	format := r.URL.Query().Get("format")
@@ -24,15 +25,15 @@ func streamHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url, err := GetStreamURL(video, format)
+	stream, err := GetStreamURL(video, format)
 	if err != nil {
 		resp := Response{Status: false, Message: err.Error()}
 		json.NewEncoder(w).Encode(resp)
 		return
 	}
 
-	resp := Response{Status: true, Stream: url}
 	w.Header().Set("Content-Type", "application/json")
+	resp := Response{Status: true, Stream: stream}
 	json.NewEncoder(w).Encode(resp)
 }
 
@@ -63,8 +64,9 @@ func isValidURL(url string) bool {
 }
 
 func main() {
-	go keepAlive()
 	http.HandleFunc("/stream", streamHandler)
-	log.Println("🚀 Server running at http://localhost:10000")
-	log.Fatal(http.ListenAndServe(":10000", nil)) // use port 10000 for Render
+	go keepAlive()
+
+	log.Println("🚀 Server running on :8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
