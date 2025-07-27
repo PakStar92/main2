@@ -20,8 +20,9 @@
   },
   "homepage": "https://github.com/GlobalTechInfo/360#readme",
   "dependencies": {
-    "axios": "^1.7.9",
-    "cheerio": "^1.0.0",
-    "form-data": "^4.0.1"
+    "ytdl-core": "latest",
+    "fluent-ffmpeg": "^2.1.2",
+    "fs": "^0.0.1-security",
+    "path": "^0.12.7"
   }
 }
