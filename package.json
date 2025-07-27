@@ -1,0 +1,27 @@
+{
+  "name": "ep360",
+  "version": "1.0.0",
+  "description": "Qasim Ali",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+  "Qasim Ali"
+],
+  "author": "GlobalTechInfo",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GlobalTechInfo/360.git"
+  },
+  "bugs": {
+    "url": "https://github.com/GlobalTechInfo/360/issues"
+  },
+  "homepage": "https://github.com/GlobalTechInfo/360#readme",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "cheerio": "^1.0.0",
+    "form-data": "^4.0.1"
+  }
+}
