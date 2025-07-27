@@ -85,7 +85,7 @@ class PhotoOxyFixed {
             effectId: this.extractEffectId(),
             
             // Count text inputs
-            textInputCount: $('input[type="text"], textarea').filter(':visible').length
+            textInputCount: $('input[type="text"], textarea').length
         };
 
         console.log('📊 Extracted form data:');
