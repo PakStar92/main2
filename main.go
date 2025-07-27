@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
+	"strings"
+	"time"
 )
 
 type Response struct {
@@ -12,7 +15,6 @@ type Response struct {
 	Stream  string `json:"stream,omitempty"`
 }
 
-// Handler for /stream?video=...&format=...
 func streamHandler(w http.ResponseWriter, r *http.Request) {
 	video := r.URL.Query().Get("video")
 	format := r.URL.Query().Get("format")
@@ -34,9 +36,35 @@ func streamHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
-func main() {
-	http.HandleFunc("/stream", streamHandler)
+func keepAlive() {
+	url := os.Getenv("APP_URL")
+	if url == "" {
+		log.Println("No APP_URL provided, skipping keepAlive...")
+		return
+	}
+	if !isValidURL(url) {
+		log.Println("Invalid APP_URL format, skipping keepAlive...")
+		return
+	}
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+		resp, err := http.Get(url)
+		if err != nil {
+			log.Printf("Error pinging URL: %v\n", err)
+			continue
+		}
+		resp.Body.Close()
+	}
+}
 
-	log.Println("🚀 Server running at http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+func isValidURL(url string) bool {
+	return strings.HasPrefix(url, "http://") || strings.HasPrefix(url, "https://")
+}
+
+func main() {
+	go keepAlive()
+	http.HandleFunc("/stream", streamHandler)
+	log.Println("🚀 Server running at http://localhost:10000")
+	log.Fatal(http.ListenAndServe(":10000", nil)) // use port 10000 for Render
 }
