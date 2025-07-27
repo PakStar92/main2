@@ -1,111 +1,140 @@
-const PhotoOxyRealFix = require('./photooxy-enhanced');
+const PhotoOxyFinalFix = require('./photooxy-enhanced');
 
-async function testRealFix() {
-    console.log('🧪 Testing PhotoOxy Real Fix...\n');
+async function testFinal() {
+    console.log('🎯 Testing PhotoOxy Final Fix...\n');
     
     const effectUrl = 'https://photooxy.com/logo-and-text-effects/shadow-text-effect-in-the-sky-394.html';
     const text = 'HELLO WORLD';
     
     try {
-        const photoOxy = new PhotoOxyRealFix(effectUrl);
+        const photoOxy = new PhotoOxyFinalFix(effectUrl);
         photoOxy.setText([text]);
         
         const result = await photoOxy.execute();
         
-        console.log('\n🎉 RESULT:');
-        console.log('=========');
-        console.log('Status:', result.status);
-        console.log('Image URL:', result.imageUrl);
-        console.log('Message:', result.message);
+        console.log('\n' + '='.repeat(50));
+        console.log('🎉 FINAL RESULT');
+        console.log('='.repeat(50));
+        console.log('✅ Status:', result.status);
+        console.log('🔗 Image URL:', result.imageUrl);
+        console.log('💬 Message:', result.message);
         
-        if (result.contentType) {
-            console.log('Content Type:', result.contentType);
-            console.log('File Size:', result.contentLength, 'bytes');
+        if (result.contentLength) {
+            console.log('📏 File Size:', result.contentLength, 'bytes');
+            console.log('📄 Content Type:', result.contentType);
         }
         
         if (result.isLikelyGenerated !== undefined) {
-            console.log('Likely Generated:', result.isLikelyGenerated ? '✅ YES' : '❌ NO');
+            console.log('🎨 Custom Generated:', result.isLikelyGenerated ? '✅ YES!' : '❌ NO (Template)');
         }
         
         if (result.warning) {
-            console.log('Warning:', result.warning);
+            console.log('⚠️  Warning:', result.warning);
         }
         
         if (result.debugInfo) {
             console.log('\n🔍 DEBUG INFO:');
-            console.log('All images found:', result.debugInfo.allImages?.length || 0);
-            if (result.debugInfo.allImages) {
-                result.debugInfo.allImages.forEach((img, i) => {
-                    console.log(`  ${i + 1}. ${img.fullSrc}`);
-                });
+            console.log('- Response Length:', result.debugInfo.responseLength);
+            console.log('- Images Found:', result.debugInfo.imagesFound);
+            console.log('- Forms Found:', result.debugInfo.formsFound);
+            console.log('- Contains Processing:', result.debugInfo.containsProcessing);
+        }
+        
+        // Test if the image URL actually works
+        if (result.imageUrl) {
+            console.log('\n🧪 Testing image accessibility...');
+            const axios = require('axios');
+            
+            try {
+                const testResponse = await axios.head(result.imageUrl, { timeout: 5000 });
+                console.log('✅ Image is accessible');
+                console.log('📊 Actual size:', testResponse.headers['content-length'], 'bytes');
+                console.log('📄 Actual type:', testResponse.headers['content-type']);
+            } catch (error) {
+                console.log('❌ Image accessibility test failed:', error.message);
             }
         }
         
         return result;
         
     } catch (error) {
-        console.error('❌ Test failed:', error.message);
+        console.error('\n❌ Final test failed:', error.message);
+        console.error('🔍 Error details:', error.stack);
         throw error;
     }
 }
 
-// Also test with a simpler effect
-async function testSimpleEffect() {
-    console.log('\n🧪 Testing with simpler effect...\n');
-    
-    const simpleEffectUrl = 'https://photooxy.com/logo-and-text-effects/butterfly-text-with-reflection-effect-183.html';
-    const text = 'TEST';
+// Quick comparison test
+async function compareWithPackage() {
+    console.log('\n📦 Comparing with textmaker-thiccy package...\n');
     
     try {
-        const photoOxy = new PhotoOxyRealFix(simpleEffectUrl);
-        photoOxy.setText([text]);
+        const thiccysapi = require('textmaker-thiccy');
         
-        const result = await photoOxy.execute();
+        const packageResult = await thiccysapi.photooxy(
+            "https://photooxy.com/logo-and-text-effects/shadow-text-effect-in-the-sky-394.html",
+            "HELLO WORLD"
+        );
         
-        console.log('\n🎉 SIMPLE EFFECT RESULT:');
-        console.log('========================');
-        console.log('Status:', result.status);
-        console.log('Image URL:', result.imageUrl);
-        console.log('Likely Generated:', result.isLikelyGenerated ? '✅ YES' : '❌ NO');
-        
-        return result;
+        console.log('📦 Package result:', packageResult);
+        return packageResult;
         
     } catch (error) {
-        console.error('❌ Simple effect test failed:', error.message);
+        console.log('📦 Package test failed:', error.message);
+        if (error.message.includes('Cannot find module')) {
+            console.log('💡 To install: npm install textmaker-thiccy');
+        }
         return null;
     }
 }
 
-// Run tests
-async function runAllTests() {
+async function runComparison() {
+    console.log('🚀 Running comparison test...\n');
+    
     try {
-        console.log('🚀 Starting comprehensive PhotoOxy tests...\n');
+        // Test custom implementation
+        console.log('1️⃣ Testing custom implementation:');
+        const customResult = await testFinal();
         
-        // Test 1: Main effect
-        const result1 = await testRealFix();
+        // Test package implementation
+        console.log('\n2️⃣ Testing package implementation:');
+        const packageResult = await compareWithPackage();
         
-        // Test 2: Simple effect
-        const result2 = await testSimpleEffect();
+        // Compare results
+        console.log('\n' + '='.repeat(60));
+        console.log('📊 COMPARISON SUMMARY');
+        console.log('='.repeat(60));
         
-        console.log('\n📊 SUMMARY:');
-        console.log('===========');
-        console.log('Main effect success:', result1.status ? '✅' : '❌');
-        console.log('Simple effect success:', result2?.status ? '✅' : '❌');
+        console.log('Custom Implementation:');
+        console.log('  - Success:', customResult.status ? '✅' : '❌');
+        console.log('  - Generated:', customResult.isLikelyGenerated ? '✅' : '❌');
+        console.log('  - URL:', customResult.imageUrl?.substring(0, 60) + '...');
         
-        if (result1.isLikelyGenerated || result2?.isLikelyGenerated) {
-            console.log('\n🎉 SUCCESS: At least one test generated a custom image!');
+        console.log('\nPackage Implementation:');
+        if (packageResult) {
+            console.log('  - Success: ✅');
+            console.log('  - URL:', packageResult.substring(0, 60) + '...');
         } else {
-            console.log('\n⚠️  WARNING: Both tests may have returned template images');
-            console.log('This suggests PhotoOxy may have changed their submission process');
+            console.log('  - Success: ❌ (Package not available)');
+        }
+        
+        // Recommendation
+        console.log('\n💡 RECOMMENDATION:');
+        if (customResult.isLikelyGenerated) {
+            console.log('✅ Custom implementation is working! Use PhotoOxyFinalFix.');
+        } else if (packageResult) {
+            console.log('📦 Use the textmaker-thiccy package for better results.');
+        } else {
+            console.log('⚠️ Both methods have issues. PhotoOxy may have updated their system.');
         }
         
     } catch (error) {
-        console.error('\n💥 All tests failed:', error.message);
+        console.error('💥 Comparison failed:', error.message);
     }
 }
 
 if (require.main === module) {
-    runAllTests();
+    runComparison();
 }
 
-module.exports = { testRealFix, testSimpleEffect };
+module.exports = { testFinal, compareWithPackage };
