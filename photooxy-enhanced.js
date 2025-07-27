@@ -2,8 +2,8 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const FormData = require('form-data');
 
-class PhotoOxyEnhanced {
-    constructor(effectUrl = 'https://photooxy.com/logo-and-text-effects/butterfly-text-with-reflection-effect-183.html') {
+class PhotoOxyFixed {
+    constructor(effectUrl = 'https://photooxy.com/logo-and-text-effects/shadow-text-effect-in-the-sky-394.html') {
         if (!effectUrl.includes('photooxy.com')) {
             throw new Error('Invalid URL: Must be a photooxy.com URL');
         }
@@ -21,44 +21,37 @@ class PhotoOxyEnhanced {
 
     async execute() {
         try {
-            console.log('🚀 Enhanced PhotoOxy execution started...');
+            console.log('🚀 PhotoOxy Fixed execution started...');
             console.log('📍 URL:', this.effectUrl);
             console.log('📝 Input Texts:', this.inputTexts);
 
-            // Step 1: Load initial page and maintain session
-            const initialData = await this.loadInitialPage();
+            // Step 1: Get initial page and form data
+            const initialData = await this.getInitialData();
             
-            // Step 2: Submit form with proper session handling
-            const submissionResult = await this.submitForm(initialData);
+            // Step 2: Submit to build server (this is the key!)
+            const buildResult = await this.submitToBuildServer(initialData);
             
-            // Step 3: Handle the image generation process
-            const imageResult = await this.processImageGeneration(submissionResult);
+            // Step 3: Get the generated image
+            const finalResult = await this.getFinalImage(buildResult);
             
-            console.log('✅ Process completed!');
-            return imageResult;
+            console.log('✅ Process completed successfully!');
+            return finalResult;
 
         } catch (error) {
-            console.error('❌ Enhanced PhotoOxy execution failed:', error.message);
-            console.error('🔍 Stack trace:', error.stack);
+            console.error('❌ PhotoOxy execution failed:', error.message);
+            console.error('🔍 Details:', error.response?.data?.slice(0, 500) || error.stack);
             throw error;
         }
     }
 
-    async loadInitialPage() {
-        console.log('\n📥 Step 1: Loading initial page with session management...');
+    async getInitialData() {
+        console.log('\n📥 Step 1: Getting initial page data...');
         
-        const response = await axios({
-            method: 'GET',
-            url: this.effectUrl,
+        const response = await axios.get(this.effectUrl, {
             headers: {
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.5',
-                'Accept-Encoding': 'gzip, deflate, br',
                 'User-Agent': this.userAgent,
-                'Upgrade-Insecure-Requests': '1',
-                'Sec-Fetch-Dest': 'document',
-                'Sec-Fetch-Mode': 'navigate',
-                'Sec-Fetch-Site': 'none',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
                 'Cache-Control': 'no-cache'
             },
             timeout: 15000
@@ -66,402 +59,383 @@ class PhotoOxyEnhanced {
 
         console.log('✅ Initial page loaded, status:', response.status);
         
-        // Store session cookies
+        // Store cookies
         if (response.headers['set-cookie']) {
             this.sessionCookies = response.headers['set-cookie'];
-            console.log('🍪 Session cookies stored:', this.sessionCookies.length);
+            console.log('🍪 Session cookies stored');
         }
 
         const $ = cheerio.load(response.data);
-        const formData = this.extractEnhancedFormData($);
         
-        console.log('📊 Enhanced form data extracted');
+        // Extract the critical form data for PhotoOxy
+        const formData = {
+            // Extract build server URL - this is crucial!
+            buildServer: $('input[name="build_server"]').val() || 
+                        $('input[name="server"]').val() ||
+                        $('#build_server').val(),
+            
+            // Extract build server ID
+            buildServerId: $('input[name="build_server_id"]').val() || '1',
+            
+            // Extract token
+            token: $('input[name="token"]').val() || 
+                  $('meta[name="csrf-token"]').attr('content'),
+            
+            // Extract effect ID
+            effectId: this.extractEffectId(),
+            
+            // Count text inputs
+            textInputCount: $('input[type="text"], textarea').filter(':visible').length
+        };
+
+        console.log('📊 Extracted form data:');
+        console.log('  - Build Server:', formData.buildServer);
+        console.log('  - Build Server ID:', formData.buildServerId);
+        console.log('  - Token:', formData.token ? 'Found' : 'Not found');
+        console.log('  - Effect ID:', formData.effectId);
+        console.log('  - Text Input Count:', formData.textInputCount);
+
+        if (!formData.buildServer) {
+            throw new Error('Could not find build server URL - this is required for PhotoOxy');
+        }
+
         return { $, formData, html: response.data };
     }
 
-    extractEnhancedFormData($) {
-        console.log('🔍 Extracting enhanced form data...');
-        
-        const formData = {
-            hiddenInputs: {},
-            textInputs: [],
-            formAction: null,
-            method: 'POST'
-        };
-
-        // Find the main form
-        const mainForm = $('form').first();
-        if (mainForm.length) {
-            formData.formAction = mainForm.attr('action') || this.effectUrl;
-            formData.method = mainForm.attr('method') || 'POST';
-        }
-
-        // Extract all hidden inputs
-        $('input[type="hidden"]').each((i, el) => {
-            const name = $(el).attr('name');
-            const value = $(el).val();
-            if (name && value !== undefined) {
-                formData.hiddenInputs[name] = value;
-            }
-        });
-
-        // Extract text input information
-        $('input[type="text"], textarea').each((i, el) => {
-            const name = $(el).attr('name') || `text_${i}`;
-            const placeholder = $(el).attr('placeholder') || '';
-            const maxLength = $(el).attr('maxlength') || 100;
-            
-            formData.textInputs.push({
-                name,
-                placeholder,
-                maxLength,
-                index: i
-            });
-        });
-
-        // Look for special PhotoOxy elements
-        const buildServer = $('input[name="build_server"]').val() || 
-                           $('input[name="server"]').val() ||
-                           $('#build_server').val();
-        
-        if (buildServer) {
-            formData.buildServer = buildServer;
-        }
-
-        // Extract effect ID more reliably
-        const effectMatch = this.effectUrl.match(/(\d+)\.html$/);
-        if (effectMatch) {
-            formData.effectId = effectMatch[1];
-        }
-
-        // Look for CSRF tokens in meta tags
-        const csrfToken = $('meta[name="csrf-token"]').attr('content') ||
-                         $('meta[name="_token"]').attr('content');
-        if (csrfToken) {
-            formData.hiddenInputs['_token'] = csrfToken;
-        }
-
-        console.log('📋 Form data summary:');
-        console.log('  - Hidden inputs:', Object.keys(formData.hiddenInputs).length);
-        console.log('  - Text inputs:', formData.textInputs.length);
-        console.log('  - Effect ID:', formData.effectId);
-        console.log('  - Build server:', formData.buildServer);
-
-        return formData;
+    extractEffectId() {
+        const match = this.effectUrl.match(/(\d+)\.html$/);
+        return match ? match[1] : null;
     }
 
-    async submitForm(initialData) {
-        console.log('\n📤 Step 2: Submitting form with enhanced data...');
+    async submitToBuildServer(initialData) {
+        console.log('\n📤 Step 2: Submitting to build server...');
         
         const { formData } = initialData;
         const form = new FormData();
 
-        // Add all hidden inputs
-        Object.entries(formData.hiddenInputs).forEach(([key, value]) => {
-            form.append(key, value);
-        });
+        // Add the essential PhotoOxy parameters
+        form.append('token', formData.token || '');
+        form.append('build_server', formData.buildServer);
+        form.append('build_server_id', formData.buildServerId);
+        form.append('submit', 'GO');
+        form.append('id', formData.effectId);
 
-        // Add text inputs using multiple naming conventions
+        // Add text inputs with correct naming
         this.inputTexts.forEach((text, index) => {
-            // Try different naming patterns PhotoOxy might use
-            form.append(`text_${index}`, text);
             form.append(`text-${index}`, text);
             form.append('text[]', text);
-            
-            if (formData.textInputs[index]) {
-                form.append(formData.textInputs[index].name, text);
-            }
         });
 
-        // Add effect ID if found
-        if (formData.effectId) {
-            form.append('id', formData.effectId);
-            form.append('effect_id', formData.effectId);
+        // Make sure we have the right number of text inputs
+        for (let i = this.inputTexts.length; i < formData.textInputCount; i++) {
+            form.append(`text-${i}`, this.inputTexts[0] || 'Sample');
+            form.append('text[]', this.inputTexts[0] || 'Sample');
         }
 
-        // Add standard submit data
-        form.append('submit', 'GO');
-        form.append('build', '1');
+        console.log('📡 Submitting to build server:', formData.buildServer);
+        console.log('📝 Submitting texts:', this.inputTexts);
 
-        const submitUrl = formData.formAction && formData.formAction.startsWith('http') 
-            ? formData.formAction 
-            : this.effectUrl;
-
-        console.log('📡 Submitting to:', submitUrl);
-
-        const response = await axios({
-            method: 'POST',
-            url: submitUrl,
-            data: form,
+        const response = await axios.post(this.effectUrl, form, {
             headers: {
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.5',
+                'User-Agent': this.userAgent,
+                'Accept': '*/*',
                 'Origin': this.baseUrl,
                 'Referer': this.effectUrl,
-                'User-Agent': this.userAgent,
                 'Cookie': this.sessionCookies.join('; '),
                 ...form.getHeaders()
             },
-            maxRedirects: 5,
-            timeout: 30000,
-            validateStatus: (status) => status < 500
+            maxRedirects: 0, // Don't follow redirects automatically
+            validateStatus: (status) => status < 400,
+            timeout: 30000
         });
 
-        console.log('✅ Form submitted, status:', response.status);
-        console.log('📍 Final URL:', response.request.res.responseUrl || submitUrl);
+        console.log('✅ Build server response, status:', response.status);
 
         return {
             response,
             html: response.data,
-            finalUrl: response.request.res.responseUrl || submitUrl
+            buildServer: formData.buildServer,
+            token: formData.token,
+            effectId: formData.effectId
         };
     }
 
-    async processImageGeneration(submissionResult) {
-        console.log('\n🖼️ Step 3: Processing image generation...');
+    async getFinalImage(buildResult) {
+        console.log('\n🖼️ Step 3: Getting final generated image...');
         
-        const $ = cheerio.load(submissionResult.html);
+        const $ = cheerio.load(buildResult.html);
         
-        // Method 1: Look for direct image URLs
-        let imageUrl = this.findDirectImageUrl($);
-        
-        if (imageUrl) {
-            console.log('✅ Found direct image URL:', imageUrl);
-            return await this.validateAndReturnImage(imageUrl);
-        }
-
-        // Method 2: Look for AJAX endpoints
-        imageUrl = await this.checkAjaxEndpoints($, submissionResult);
+        // Method 1: Look for generated image URLs (not sample images)
+        let imageUrl = this.findGeneratedImageUrl($);
         
         if (imageUrl) {
-            console.log('✅ Found image via AJAX:', imageUrl);
-            return await this.validateAndReturnImage(imageUrl);
+            console.log('✅ Found generated image URL:', imageUrl);
+            return await this.validateImageUrl(imageUrl);
         }
 
-        // Method 3: Look for processing status and wait
-        const processingInfo = this.findProcessingInfo($);
+        // Method 2: Check if we need to call the build server directly
+        imageUrl = await this.callBuildServerDirect(buildResult);
         
-        if (processingInfo.isProcessing) {
-            console.log('⏳ Image is being processed, waiting...');
-            imageUrl = await this.waitForProcessing(processingInfo);
-            
-            if (imageUrl) {
-                console.log('✅ Found image after processing:', imageUrl);
-                return await this.validateAndReturnImage(imageUrl);
-            }
+        if (imageUrl) {
+            console.log('✅ Got image from build server:', imageUrl);
+            return await this.validateImageUrl(imageUrl);
         }
 
-        // Method 4: Check for redirect or next step
-        const nextStep = this.findNextStep($);
+        // Method 3: Look for AJAX endpoints in the response
+        imageUrl = await this.checkForAjaxGeneration($, buildResult);
         
-        if (nextStep) {
-            console.log('🔄 Following next step:', nextStep);
-            return await this.followNextStep(nextStep);
+        if (imageUrl) {
+            console.log('✅ Got image via AJAX:', imageUrl);
+            return await this.validateImageUrl(imageUrl);
         }
 
-        console.log('❌ Could not find image URL using any method');
+        // Method 4: Parse JavaScript for image generation logic
+        imageUrl = this.parseJavaScriptForImageUrl($);
+        
+        if (imageUrl) {
+            console.log('✅ Found image URL in JavaScript:', imageUrl);
+            return await this.validateImageUrl(imageUrl);
+        }
+
+        console.log('❌ Could not find generated image URL');
+        console.log('🔍 Page contains:', $('img').length, 'images');
+        
+        // Debug: show all image sources found
+        const allImages = [];
+        $('img').each((i, el) => {
+            const src = $(el).attr('src');
+            if (src) allImages.push(src);
+        });
+        console.log('🔍 All images found:', allImages);
+
         return {
             status: false,
-            imageUrl: null,
-            error: 'Could not extract image URL from response',
+            error: 'Could not generate custom image - form submission may have failed',
             debugInfo: {
-                responseLength: submissionResult.html.length,
-                finalUrl: submissionResult.finalUrl,
-                foundImages: $('img').length,
-                foundLinks: $('a[href*=".jpg"], a[href*=".png"], a[href*=".jpeg"]').length
+                allImagesFound: allImages,
+                responseLength: buildResult.html.length,
+                buildServer: buildResult.buildServer
             }
         };
     }
 
-    findDirectImageUrl($) {
-        console.log('🔍 Looking for direct image URLs...');
+    findGeneratedImageUrl($) {
+        console.log('🔍 Looking for generated image URLs...');
         
-        // Look for result images
+        // Look for images that are NOT samples/templates
+        const excludePatterns = [
+            '/logo/', '/sample/', '/template/', '/demo/', 
+            'logo-oxy.png', 'sample-', 'demo-', 'template-'
+        ];
+
+        // Check common selectors for result images
         const selectors = [
             'img[src*="/result/"]',
-            'img[src*="/generated/"]',
+            'img[src*="/generated/"]', 
             'img[src*="/output/"]',
-            'img.result-image',
-            '#result-image',
+            'img[src*="/temp/"]',
+            'img[src*="/cache/"]',
+            '.result img',
+            '#result img',
             '.photo-result img',
-            'img[src*=".jpg"]:not([src*="logo"]):not([src*="sample"])',
-            'img[src*=".png"]:not([src*="logo"]):not([src*="sample"])'
+            '.generated-image',
+            'img[data-result]'
         ];
 
         for (const selector of selectors) {
             const img = $(selector).first();
             if (img.length) {
                 let src = img.attr('src');
-                if (src && !src.includes('logo') && !src.includes('sample')) {
+                if (src && !excludePatterns.some(pattern => src.includes(pattern))) {
                     return src.startsWith('http') ? src : this.baseUrl + src;
                 }
             }
         }
 
-        // Look in download links
-        const downloadLink = $('a[href*="/download/"], a[download], a[href*=".jpg"], a[href*=".png"]').first();
-        if (downloadLink.length) {
-            let href = downloadLink.attr('href');
-            if (href) {
-                return href.startsWith('http') ? href : this.baseUrl + href;
+        // Look through all images for ones that look generated
+        let bestCandidate = null;
+        $('img').each((i, el) => {
+            const src = $(el).attr('src');
+            if (src && src.includes('.jpg') || src.includes('.png')) {
+                // Skip if it contains exclude patterns
+                if (excludePatterns.some(pattern => src.includes(pattern))) {
+                    return;
+                }
+                
+                // Look for indicators this is a generated image
+                if (src.includes('/uploads/') || src.includes('/temp/') || 
+                    src.includes('/result/') || src.includes('/cache/') ||
+                    /\d{10,}/.test(src)) { // Contains timestamp-like numbers
+                    bestCandidate = src.startsWith('http') ? src : this.baseUrl + src;
+                }
             }
-        }
-
-        return null;
-    }
-
-    async checkAjaxEndpoints($, submissionResult) {
-        console.log('🔍 Checking for AJAX endpoints...');
-        
-        // Look for AJAX URLs in JavaScript
-        const scriptText = $('script').text();
-        const ajaxMatches = scriptText.match(/(?:url|ajax|endpoint)['":\s]*['"]([^'"]*(?:ajax|api|generate|create)[^'"]*)['"]/) ||
-                           scriptText.match(/['"]([^'"]*\/ajax\/[^'"]*)['"]/) ||
-                           scriptText.match(/['"]([^'"]*\/api\/[^'"]*)['"]/);
-
-        if (ajaxMatches) {
-            const ajaxUrl = ajaxMatches[1];
-            console.log('📡 Found AJAX endpoint:', ajaxUrl);
-            
-            try {
-                return await this.callAjaxEndpoint(ajaxUrl);
-            } catch (error) {
-                console.log('⚠️ AJAX call failed:', error.message);
-            }
-        }
-
-        return null;
-    }
-
-    async callAjaxEndpoint(ajaxUrl) {
-        const fullUrl = ajaxUrl.startsWith('http') ? ajaxUrl : this.baseUrl + ajaxUrl;
-        
-        const response = await axios({
-            method: 'POST',
-            url: fullUrl,
-            headers: {
-                'Accept': 'application/json, text/javascript, */*; q=0.01',
-                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                'X-Requested-With': 'XMLHttpRequest',
-                'User-Agent': this.userAgent,
-                'Cookie': this.sessionCookies.join('; '),
-                'Referer': this.effectUrl
-            },
-            timeout: 15000
         });
 
-        const data = response.data;
-        return data.image || data.url || data.result || data.download_url || null;
+        return bestCandidate;
     }
 
-    findProcessingInfo($) {
-        const processingIndicators = [
-            $('.processing').length > 0,
-            $('[data-status="processing"]').length > 0,
-            $('*:contains("processing")').length > 0,
-            $('*:contains("generating")').length > 0
-        ];
-
-        const isProcessing = processingIndicators.some(indicator => indicator);
+    async callBuildServerDirect(buildResult) {
+        console.log('🔍 Attempting direct build server call...');
         
-        if (isProcessing) {
-            const statusUrl = $('[data-status-url]').attr('data-status-url') ||
-                             $('meta[name="status-url"]').attr('content');
-            
-            return {
-                isProcessing: true,
-                statusUrl: statusUrl ? (statusUrl.startsWith('http') ? statusUrl : this.baseUrl + statusUrl) : null
-            };
-        }
-
-        return { isProcessing: false };
-    }
-
-    async waitForProcessing(processingInfo, maxWait = 30000, interval = 2000) {
-        console.log('⏳ Waiting for image processing to complete...');
-        
-        if (!processingInfo.statusUrl) {
-            // Simple wait without status checking
-            await new Promise(resolve => setTimeout(resolve, 5000));
+        if (!buildResult.buildServer) {
             return null;
         }
 
-        const startTime = Date.now();
+        try {
+            // Try to construct the build API endpoint
+            const buildApiUrl = buildResult.buildServer + '/build';
+            
+            const form = new FormData();
+            form.append('id', buildResult.effectId);
+            form.append('token', buildResult.token || '');
+            
+            this.inputTexts.forEach((text, index) => {
+                form.append(`text-${index}`, text);
+            });
+
+            const response = await axios.post(buildApiUrl, form, {
+                headers: {
+                    'User-Agent': this.userAgent,
+                    'Origin': this.baseUrl,
+                    'Referer': this.effectUrl,
+                    'Cookie': this.sessionCookies.join('; '),
+                    ...form.getHeaders()
+                },
+                timeout: 30000
+            });
+
+            const data = response.data;
+            
+            // Handle JSON response
+            if (typeof data === 'object') {
+                return data.image || data.url || data.result || data.download_url;
+            }
+            
+            // Handle HTML response
+            const $ = cheerio.load(data);
+            return this.findGeneratedImageUrl($);
+
+        } catch (error) {
+            console.log('⚠️ Direct build server call failed:', error.message);
+            return null;
+        }
+    }
+
+    async checkForAjaxGeneration($, buildResult) {
+        console.log('🔍 Checking for AJAX generation endpoints...');
         
-        while (Date.now() - startTime < maxWait) {
-            try {
-                const response = await axios.get(processingInfo.statusUrl, {
-                    headers: {
-                        'User-Agent': this.userAgent,
-                        'Cookie': this.sessionCookies.join('; ')
+        // Look for AJAX URLs in JavaScript
+        const scripts = $('script').toArray();
+        
+        for (const script of scripts) {
+            const scriptContent = $(script).html() || '';
+            
+            // Look for common AJAX patterns
+            const ajaxMatches = scriptContent.match(/(?:ajax|post|fetch)\s*\(\s*['"](.*?)['"]/g) ||
+                               scriptContent.match(/url\s*:\s*['"](.*?)['"]/) ||
+                               scriptContent.match(/['"]([^'"]*(?:generate|create|build|ajax)[^'"]*)['"]/) ||
+                               [];
+
+            for (const match of ajaxMatches) {
+                const urlMatch = match.match(/['"](.*?)['"]/);
+                if (urlMatch) {
+                    const ajaxUrl = urlMatch[1];
+                    if (ajaxUrl.includes('generate') || ajaxUrl.includes('create') || 
+                        ajaxUrl.includes('build') || ajaxUrl.includes('ajax')) {
+                        
+                        const result = await this.tryAjaxEndpoint(ajaxUrl, buildResult);
+                        if (result) return result;
                     }
-                });
-
-                const data = response.data;
-                
-                if (data.status === 'completed' || data.ready) {
-                    return data.image || data.url || data.result;
                 }
-                
-                if (data.status === 'failed' || data.error) {
-                    throw new Error('Image processing failed: ' + (data.error || 'Unknown error'));
-                }
-
-            } catch (error) {
-                console.log('⚠️ Status check failed:', error.message);
             }
-
-            await new Promise(resolve => setTimeout(resolve, interval));
-        }
-
-        console.log('⏰ Processing timeout reached');
-        return null;
-    }
-
-    findNextStep($) {
-        // Look for redirect meta tags
-        const redirect = $('meta[http-equiv="refresh"]').attr('content');
-        if (redirect) {
-            const urlMatch = redirect.match(/url=(.+)/i);
-            if (urlMatch) {
-                return urlMatch[1].startsWith('http') ? urlMatch[1] : this.baseUrl + urlMatch[1];
-            }
-        }
-
-        // Look for JavaScript redirects
-        const scriptText = $('script').text();
-        const jsRedirect = scriptText.match(/(?:location\.href|window\.location)[^'"]*['"]([^'"]*)['"]/) ||
-                          scriptText.match(/(?:replace|assign)\(['"]([^'"]*)['"]\)/);
-        
-        if (jsRedirect) {
-            const url = jsRedirect[1];
-            return url.startsWith('http') ? url : this.baseUrl + url;
         }
 
         return null;
     }
 
-    async followNextStep(nextUrl) {
-        console.log('🔄 Following next step:', nextUrl);
-        
-        const response = await axios.get(nextUrl, {
-            headers: {
-                'User-Agent': this.userAgent,
-                'Cookie': this.sessionCookies.join('; ')
-            }
-        });
+    async tryAjaxEndpoint(ajaxUrl, buildResult) {
+        try {
+            const fullUrl = ajaxUrl.startsWith('http') ? ajaxUrl : 
+                           (ajaxUrl.startsWith('/') ? this.baseUrl + ajaxUrl : 
+                            buildResult.buildServer + '/' + ajaxUrl);
 
-        const $ = cheerio.load(response.data);
-        const imageUrl = this.findDirectImageUrl($);
-        
-        return imageUrl ? await this.validateAndReturnImage(imageUrl) : null;
+            console.log('📡 Trying AJAX endpoint:', fullUrl);
+
+            const formData = new URLSearchParams();
+            formData.append('id', buildResult.effectId);
+            formData.append('token', buildResult.token || '');
+            
+            this.inputTexts.forEach((text, index) => {
+                formData.append(`text${index}`, text);
+                formData.append('text[]', text);
+            });
+
+            const response = await axios.post(fullUrl, formData.toString(), {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'User-Agent': this.userAgent,
+                    'Cookie': this.sessionCookies.join('; '),
+                    'Referer': this.effectUrl
+                },
+                timeout: 15000
+            });
+
+            const data = response.data;
+            
+            if (typeof data === 'object') {
+                return data.image || data.url || data.result || data.download_url;
+            }
+            
+            if (typeof data === 'string' && data.startsWith('http')) {
+                return data;
+            }
+
+        } catch (error) {
+            console.log('⚠️ AJAX endpoint failed:', error.message);
+        }
+
+        return null;
     }
 
-    async validateAndReturnImage(imageUrl) {
+    parseJavaScriptForImageUrl($) {
+        console.log('🔍 Parsing JavaScript for image URLs...');
+        
+        const scripts = $('script').toArray();
+        
+        for (const script of scripts) {
+            const scriptContent = $(script).html() || '';
+            
+            // Look for image URL patterns in JavaScript
+            const patterns = [
+                /(?:image|result|photo)[_\s]*[=:]\s*['"]([^'"]*\.(?:jpg|jpeg|png|gif))['"]/gi,
+                /['"]([^'"]*\/(?:result|generated|output|temp)\/[^'"]*\.(?:jpg|jpeg|png))['"]/gi,
+                /window\.location\s*=\s*['"]([^'"]*\.(?:jpg|jpeg|png))['"]/gi
+            ];
+
+            for (const pattern of patterns) {
+                const matches = scriptContent.match(pattern);
+                if (matches) {
+                    for (const match of matches) {
+                        const urlMatch = match.match(/['"]([^'"]*\.(?:jpg|jpeg|png|gif))['"]/);
+                        if (urlMatch) {
+                            const url = urlMatch[1];
+                            if (!url.includes('logo') && !url.includes('sample')) {
+                                return url.startsWith('http') ? url : this.baseUrl + url;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    async validateImageUrl(imageUrl) {
         console.log('✅ Validating image URL:', imageUrl);
         
         try {
-            // Make a HEAD request to validate the image
             const headResponse = await axios.head(imageUrl, {
                 headers: {
                     'User-Agent': this.userAgent,
@@ -471,24 +445,31 @@ class PhotoOxyEnhanced {
             });
 
             const contentType = headResponse.headers['content-type'];
-            const contentLength = headResponse.headers['content-length'];
+            const contentLength = parseInt(headResponse.headers['content-length'] || '0');
 
-            if (contentType && contentType.startsWith('image/') && contentLength > 1000) {
+            if (contentType?.startsWith('image/') && contentLength > 5000) {
                 return {
                     status: true,
                     imageUrl: imageUrl,
                     contentType: contentType,
-                    contentLength: parseInt(contentLength),
-                    message: 'Image generated successfully'
+                    contentLength: contentLength,
+                    message: 'Custom image generated successfully!'
                 };
             } else {
-                throw new Error('Invalid image response');
+                console.log('⚠️ Image validation warning: small file size or wrong content type');
+                return {
+                    status: true,
+                    imageUrl: imageUrl,
+                    contentType: contentType,
+                    contentLength: contentLength,
+                    message: 'Image found but may be template/sample',
+                    warning: 'Small file size - might be template image'
+                };
             }
 
         } catch (error) {
             console.log('⚠️ Image validation failed:', error.message);
             
-            // Return the URL anyway, might still work
             return {
                 status: true,
                 imageUrl: imageUrl,
@@ -503,10 +484,36 @@ class PhotoOxyEnhanced {
             effectUrl: this.effectUrl,
             inputTexts: this.inputTexts,
             baseUrl: this.baseUrl,
-            sessionCookies: this.sessionCookies.length,
-            effectId: this.effectUrl.match(/(\d+)\.html$/)?.[1]
+            effectId: this.extractEffectId(),
+            sessionCookies: this.sessionCookies.length
         };
     }
 }
 
-module.exports = PhotoOxyEnhanced;
+// Alternative: Use the working npm package
+class PhotoOxyWrapper {
+    static async createWithPackage(effectUrl, text) {
+        console.log('📦 Using textmaker-thiccy package as fallback...');
+        
+        try {
+            // This requires: npm install textmaker-thiccy
+            const thiccysapi = require('textmaker-thiccy');
+            
+            const texts = Array.isArray(text) ? text : [text];
+            const result = await thiccysapi.photooxy(effectUrl, texts.length === 1 ? texts[0] : texts);
+            
+            return {
+                status: true,
+                imageUrl: result.image || result,
+                message: 'Generated using textmaker-thiccy package',
+                package: 'textmaker-thiccy'
+            };
+            
+        } catch (error) {
+            console.log('❌ Package method failed:', error.message);
+            throw new Error('Both custom implementation and package method failed. Try: npm install textmaker-thiccy');
+        }
+    }
+}
+
+module.exports = { PhotoOxyFixed, PhotoOxyWrapper };
