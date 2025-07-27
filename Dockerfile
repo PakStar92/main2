@@ -25,9 +25,6 @@ WORKDIR /app
 # Copy files
 COPY . .
 
-# Init go module
-RUN go mod init main
-
 # Build binary
 RUN go build -o main .
 
