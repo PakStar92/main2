@@ -1,4 +1,4 @@
-const { PhotoOxyFixed, PhotoOxyWrapper } = require('./photooxy-fixed');
+const { PhotoOxyFixed, PhotoOxyWrapper } = require('./photooxy-enhanced');
 
 async function testFixed() {
     // Method 1: Custom implementation
