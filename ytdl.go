@@ -6,8 +6,14 @@ import (
 	"strings"
 )
 
-// GetStreamURL returns direct media stream URL using yt-dlp
-func GetStreamURL(videoURL string, format string) (string, error) {
+// StreamLinks holds the separate video/audio URLs
+type StreamLinks struct {
+	Video string `json:"video,omitempty"`
+	Audio string `json:"audio,omitempty"`
+}
+
+// GetStreamURL returns structured video/audio stream URLs
+func GetStreamURL(videoURL string, format string) (*StreamLinks, error) {
 	var args []string
 
 	switch format {
@@ -22,10 +28,20 @@ func GetStreamURL(videoURL string, format string) (string, error) {
 	cmd := exec.Command("yt-dlp", args...)
 	output, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("yt-dlp failed: %v", err)
+		return nil, fmt.Errorf("yt-dlp failed: %v", err)
 	}
 
-	// Return stream URL(s)
 	urls := strings.Split(strings.TrimSpace(string(output)), "\n")
-	return strings.Join(urls, " "), nil
+	result := &StreamLinks{}
+
+	if len(urls) == 2 {
+		result.Video = urls[0]
+		result.Audio = urls[1]
+	} else if strings.Contains(format, "audio") || strings.Contains(format, "mp3") {
+		result.Audio = urls[0]
+	} else {
+		result.Video = urls[0]
+	}
+
+	return result, nil
 }
