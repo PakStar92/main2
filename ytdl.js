@@ -37,8 +37,9 @@ class YouTubeDownloader {
      * @returns {boolean} - True if valid YouTube URL
      */
     isValidYouTubeUrl(url) {
-        const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)/;
-        return youtubeRegex.test(url);
+    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
+    return youtubeRegex.test(url);
+ 
     }
 
     /**
