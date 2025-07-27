@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// GetStreamURL returns the direct media stream URL using yt-dlp
+// GetStreamURL returns direct media stream URL using yt-dlp
 func GetStreamURL(videoURL string, format string) (string, error) {
 	var args []string
 
@@ -16,7 +16,7 @@ func GetStreamURL(videoURL string, format string) (string, error) {
 	case "mp3", "audio":
 		args = []string{"-f", "bestaudio", "-g", videoURL}
 	default:
-		args = []string{"-g", videoURL} // fallback
+		args = []string{"-g", videoURL}
 	}
 
 	cmd := exec.Command("yt-dlp", args...)
@@ -25,7 +25,7 @@ func GetStreamURL(videoURL string, format string) (string, error) {
 		return "", fmt.Errorf("yt-dlp failed: %v", err)
 	}
 
-	// Output may be one or two lines: video and audio URLs
+	// Return stream URL(s)
 	urls := strings.Split(strings.TrimSpace(string(output)), "\n")
 	return strings.Join(urls, " "), nil
-			}
+}
