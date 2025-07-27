@@ -1,29 +1,26 @@
-# Stage 1: Build the Go binary using Go 1.23
-FROM golang:1.23 AS builder
+# Use Ubuntu base with Go 1.23
+FROM golang:1.23
 
-WORKDIR /main2
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    python3 \
+    python3-pip \
+    curl \
+    && pip3 install yt-dlp \
+    && apt-get clean
 
-COPY . .
-
-# Build binary
-RUN go build -o main .
-
-# Stage 2: Runtime (Ubuntu with yt-dlp and ffmpeg)
-FROM ubuntu:24.04
-
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update && \
-    apt-get install -y ffmpeg python3 python3-pip curl ca-certificates && \
-    pip3 install yt-dlp && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
+# Set working directory
 WORKDIR /app
 
-# Copy built Go binary from builder
-COPY --from=builder /main2/main .
+# Copy project files
+COPY . .
 
+# Build the Go app
+RUN go build -o main .
+
+# Expose the port your app runs on
 EXPOSE 8080
 
-# ✅ Fix: Correct CMD instruction
+# Command to run the binary
 CMD ["./main"]
