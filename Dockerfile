@@ -19,10 +19,10 @@ RUN apt-get update && apt-get install -y \
 RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && \
     chmod a+rx /usr/local/bin/yt-dlp
 
-# Install Go 1.23 manually
-RUN wget https://go.dev/dl/go1.23.linux-amd64.tar.gz && \
-    tar -C /usr/local -xzf go1.23.linux-amd64.tar.gz && \
-    rm go1.23.linux-amd64.tar.gz
+# Install Go 1.23.11 manually
+RUN wget https://go.dev/dl/go1.23.11.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go1.23.11.linux-amd64.tar.gz && \
+    rm go1.23.11.linux-amd64.tar.gz
 
 ENV PATH="/usr/local/go/bin:${PATH}"
 
