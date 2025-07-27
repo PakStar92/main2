@@ -1,42 +1,26 @@
-# Use official Ubuntu as base
-FROM ubuntu:24.04
+FROM ubuntu:22.04
 
-# Disable tzdata interactive prompts and set non-interactive mode
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install dependencies safely
 RUN apt-get update && apt-get install -y \
-    curl \
-    ffmpeg \
-    python3 \
-    git \
-    ca-certificates \
-    wget \
-    build-essential \
-    && apt-get clean
+    wget ffmpeg python3 python3-pip curl git build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install yt-dlp directly (not via pip)
-RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && \
-    chmod a+rx /usr/local/bin/yt-dlp
-
-# Install Go 1.23.11 manually
 RUN wget https://go.dev/dl/go1.23.11.linux-amd64.tar.gz && \
     tar -C /usr/local -xzf go1.23.11.linux-amd64.tar.gz && \
     rm go1.23.11.linux-amd64.tar.gz
 
-ENV PATH="/usr/local/go/bin:${PATH}"
+ENV PATH="/usr/local/go/bin:$PATH"
 
-# Set working directory
+RUN pip3 install yt-dlp
+
 WORKDIR /app
+COPY . /app
 
-# Copy Go files
-COPY . .
+# 🧪 Debugging step: show files that were copied
+RUN ls -al
 
-# Build the Go app
+# ⛏️ Build your Go app
 RUN go build -o main .
 
-# Expose the app port
 EXPOSE 8080
 
-# Run the app
 CMD ["./main"]
