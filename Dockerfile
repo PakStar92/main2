@@ -1,7 +1,7 @@
 # Stage 1: Build the Go binary using Go 1.23
 FROM golang:1.23 AS builder
 
-WORKDIR /app
+WORKDIR /main2
 
 COPY . .
 
@@ -21,7 +21,7 @@ RUN apt-get update && \
 WORKDIR /app
 
 # Copy built Go binary from builder
-COPY --from=builder /app/main .
+COPY --from=builder /main2/main .
 
 EXPOSE 8080
 
