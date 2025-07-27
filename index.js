@@ -5,7 +5,7 @@ const downloader = new YouTubeDownloader({
 });
 
 // Download video
-downloader.downloadVideo('https://www.youtube.com/watch?v=VIDEO_ID', {
+downloader.downloadVideo('https://youtube.com/shorts/fCXLcvPVx7I?si=Vwe0QaLgg2TJUiAS', {
     quality: '1080p',
     onProgress: (progress) => {
         console.log(`Downloaded: ${progress.percent}%`);
@@ -15,7 +15,7 @@ downloader.downloadVideo('https://www.youtube.com/watch?v=VIDEO_ID', {
 }).catch(console.error);
 
 // Download audio
-downloader.downloadAudio('https://www.youtube.com/watch?v=VIDEO_ID', {
+downloader.downloadAudio('https://youtube.com/shorts/fCXLcvPVx7I?si=Vwe0QaLgg2TJUiAS', {
     bitrate: '320k',
     onProgress: (progress) => {
         console.log(`Converting: ${progress.percent}%`);
@@ -24,6 +24,7 @@ downloader.downloadAudio('https://www.youtube.com/watch?v=VIDEO_ID', {
     console.log('Audio downloaded:', filepath);
 }).catch(console.error);
 
+/*
 // Get video info
 downloader.getVideoInfo('https://www.youtube.com/watch?v=VIDEO_ID')
     .then(info => console.log(info))
@@ -38,3 +39,4 @@ const urls = [
 downloader.batchDownload(urls, { type: 'audio' })
     .then(results => console.log(results))
     .catch(console.error);
+*/
