@@ -7,6 +7,8 @@ RUN apt-get update && apt-get install -y python3 python3-pip ffmpeg && \
 WORKDIR /app
 COPY . .
 
+RUN go mod tidy
+
 RUN go build -o main .
 
 EXPOSE 8080
