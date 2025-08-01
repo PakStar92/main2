@@ -1,47 +1,62 @@
 package main
 
 import (
-	"fmt"
+	"context"
+	"encoding/json"
+	"flag"
+	"io"
+	"log"
+	"os"
 	"os/exec"
-	"strings"
+
+	"github.com/wader/goutubedl"
 )
 
-// StreamLinks holds the separate video/audio URLs
-type StreamLinks struct {
-	Video string `json:"video,omitempty"`
-	Audio string `json:"audio,omitempty"`
-}
+var dumpFlag = flag.Bool("J", false, "Dump JSON")
+var typeFlag = flag.String("t", "any", "Type")
 
-// GetStreamURL returns structured video/audio stream URLs
-func GetStreamURL(videoURL string, format string) (*StreamLinks, error) {
-	var args []string
+func main() {
+	goutubedl.Path = "yt-dlp"
 
-	switch format {
-	case "mp4":
-		args = []string{"-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4", "-g", videoURL}
-	case "mp3", "audio":
-		args = []string{"-f", "bestaudio", "-g", videoURL}
-	default:
-		args = []string{"-g", videoURL}
-	}
+	log.SetFlags(0)
+	flag.Parse()
 
-	cmd := exec.Command("yt-dlp", args...)
-	output, err := cmd.Output()
+	optType := goutubedl.TypeFromString[*typeFlag]
+	result, err := goutubedl.New(
+		context.Background(),
+		flag.Arg(0),
+		goutubedl.Options{
+			Type:     optType,
+			DebugLog: log.Default(),
+			StderrFn: func(cmd *exec.Cmd) io.Writer { return os.Stderr },
+		},
+	)
 	if err != nil {
-		return nil, fmt.Errorf("yt-dlp failed: %v", err)
+		log.Fatal(err)
 	}
 
-	urls := strings.Split(strings.TrimSpace(string(output)), "\n")
-	result := &StreamLinks{}
-
-	if len(urls) == 2 {
-		result.Video = urls[0]
-		result.Audio = urls[1]
-	} else if strings.Contains(format, "audio") || strings.Contains(format, "mp3") {
-		result.Audio = urls[0]
-	} else {
-		result.Video = urls[0]
+	if *dumpFlag {
+		_ = json.NewEncoder(os.Stdout).Encode(result.Info)
+		return
 	}
 
-	return result, nil
+	filter := flag.Arg(1)
+	if filter == "" {
+		filter = "best"
+	}
+
+	dr, err := result.Download(context.Background(), filter)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	f, err := os.Create(filter)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+	if _, err := io.Copy(f, dr); err != nil {
+		log.Fatal(err)
+	}
+	dr.Close()
 }
