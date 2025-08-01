@@ -15,7 +15,7 @@ import (
 var dumpFlag = flag.Bool("J", false, "Dump JSON")
 var typeFlag = flag.String("t", "any", "Type")
 
-func main() {
+func cli() {
 	goutubedl.Path = "yt-dlp"
 
 	log.SetFlags(0)
