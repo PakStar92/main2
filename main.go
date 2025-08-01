@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -44,14 +45,35 @@ func streamHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(Response{Status: true, Stream: stream})
 }
 
+// Helper to find a format by exact FormatID from the slice
+func findFormatByID(formats []goutubedl.Format, id string) *goutubedl.Format {
+	for _, f := range formats {
+		if f.FormatID == id {
+			return &f
+		}
+	}
+	return nil
+}
+
+// Helper to find a format whose FormatID contains the substring
+func findFormatByFormatIDContains(formats []goutubedl.Format, substr string) *goutubedl.Format {
+	for _, f := range formats {
+		if strings.Contains(f.FormatID, substr) {
+			return &f
+		}
+	}
+	return nil
+}
+
 func GetStreamURL(videoURL string, filter string) (*StreamLinks, error) {
-	goutubedl.Path = "yt-dlp"
+	goutubedl.Path = "yt-dlp" // Ensure yt-dlp is installed and in PATH
 
 	result, err := goutubedl.New(
 		context.Background(),
 		videoURL,
 		goutubedl.Options{
 			DebugLog: log.Default(),
+			// Redirect stderr from yt-dlp command to os.Stderr for logs
 			StderrFn: func(cmd *exec.Cmd) io.Writer { return os.Stderr },
 		},
 	)
@@ -63,10 +85,10 @@ func GetStreamURL(videoURL string, filter string) (*StreamLinks, error) {
 		filter = "best"
 	}
 
-	format := result.Info.Formats.FindByID(filter)
+	format := findFormatByID(result.Info.Formats, filter)
 	if format == nil {
-		// fallback to first match of "best"
-		format = result.Info.Formats.FindByFormatIDContains("best")
+		// fallback to first format that contains "best"
+		format = findFormatByFormatIDContains(result.Info.Formats, "best")
 	}
 
 	if format == nil {
