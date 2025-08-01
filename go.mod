@@ -2,4 +2,6 @@ module main
 
 go 1.23.11
 
-"github.com/wader/goutubedl"
+require (
+github.com/wader/goutubedl
+)
